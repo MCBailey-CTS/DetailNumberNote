@@ -206,24 +206,16 @@ def create_note0(detail_number, target_face, tool_face):
     length = len(edge_positions)
     origin_in_absolute = NXOpen.Point3d(x / length, y / length, z / length)
     data = target_face.OwningComponent.GetPosition()
-    ############################################################################
-    ############################################################################
-    ############################################################################
     display_part().WCS.SetOriginAndMatrix(data[0], data[1])
-
     origin = nxopen_point3d_to_list(origin_in_absolute)
-
     origin_in_target = THE_UF_SESSION.Csys.MapPoint(
         UF_CSYS_ROOT_COORDS, origin, UF_CSYS_ROOT_WCS_COORDS)
-
     face_vector = normal_vector(target_face)
     temp_orientation = create_orientation_from_z_vector(face_vector)
     orientation = convert_to_matrix(temp_orientation)
     display_part(target_face.Prototype.OwningPart)
-
     text = create_text_feature(detail_number, NXOpen.Point3d(
         origin_in_target[0], origin_in_target[1], origin_in_target[2]), orientation)
-
     splines = get_splines(text.GetEntities())
     remove_parameters(work_part(), splines)
     modify_display(splines)
@@ -429,5 +421,3 @@ if __name__ == '__main__':
         main()
     finally:
         display_part(original_display)
-    # for t in dir(display_part().WCS):
-    #     write_line(t)
