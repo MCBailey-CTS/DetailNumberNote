@@ -4,7 +4,6 @@ import NXOpen.GeometricAnalysis
 import NXOpen
 import NXOpen.Assemblies
 import NXOpen.UF
-import time
 
 
 ####################################################################
@@ -349,70 +348,64 @@ def bodies_touch(body1, body2) -> bool:
 def main():
     result_target_body = select_solid_body()[1]
     result_tool_bodies = select_solid_bodies()[1]
-    t0 = time.time()
-    try:
-        valid_target_faces = []
-        for face in result_target_body.GetFaces():
-            if face_is_planar(face) and face_pointing_up_or_down(face):
-                valid_target_faces.append(face)
-        touching_faces = []
-        index = 1
-        for tool_body in result_tool_bodies:
-            owning_component = tool_body.OwningComponent
-            THE_UF_SESSION.Ui.SetPrompt(
-                "Processing " + str(index) + " of " + str(len(result_tool_bodies)) + ": " + owning_component.DisplayName)
-            index += 1
-            if not bodies_touch(result_target_body, tool_body):
-                write_line("Unable to find touching faces for body in Component: " +
-                           tool_body.OwningComponent.DisplayName)
+    valid_target_faces = []
+    for face in result_target_body.GetFaces():
+        if face_is_planar(face) and face_pointing_up_or_down(face):
+            valid_target_faces.append(face)
+    touching_faces = []
+    index = 1
+    for tool_body in result_tool_bodies:
+        owning_component = tool_body.OwningComponent
+        THE_UF_SESSION.Ui.SetPrompt(
+            "Processing " + str(index) + " of " + str(len(result_tool_bodies)) + ": " + owning_component.DisplayName)
+        index += 1
+        if not bodies_touch(result_target_body, tool_body):
+            write_line("Unable to find touching faces for body in Component: " +
+                       tool_body.OwningComponent.DisplayName)
+            continue
+        note_created = False
+        interfering_faces = find_interfering_faces(
+            result_target_body, tool_body)
+
+        target_face = None
+        tool_face = None
+
+        for pair in interfering_faces:
+            face1 = pair[0]
+            face2 = pair[1]
+            if not face_is_planar(face1) or not face_is_planar(face2):
                 continue
-            note_created = False
-            interfering_faces = find_interfering_faces(
-                result_target_body, tool_body)
-
-            target_face = None
-            tool_face = None
-
-            for pair in interfering_faces:
-                face1 = pair[0]
-                face2 = pair[1]
-                if not face_is_planar(face1) or not face_is_planar(face2):
-                    continue
-                if not face_pointing_up_or_down(face1) or not face_pointing_up_or_down(face2):
-                    continue
-                target_face = pair[0]
-                tool_face = pair[1]
-
-            if target_face != None and tool_face != None:
-                touching_faces.append((target_face, tool_face))
-                note_created = True
-
-            if note_created:
+            if not face_pointing_up_or_down(face1) or not face_pointing_up_or_down(face2):
                 continue
-
-            for tool_face in tool_body.GetFaces():
-                if note_created:
-                    break
-                if not face_is_planar(tool_face) or not face_pointing_up_or_down(tool_face):
-                    continue
-                for target_face in valid_target_faces:
-                    if note_created:
-                        break
-                    if touching(target_face, tool_face):
-                        touching_faces.append((target_face, tool_face))
-                        note_created = True
-
-        for pair in touching_faces:
             target_face = pair[0]
             tool_face = pair[1]
-            detail = get_detail_name(tool_face.OwningComponent)
-            create_note0(detail, target_face, tool_face)
-            tool_face.OwningComponent.Blank()
-            write_line("Created note: " + detail)
-        return
-    finally:
-        t1 = time.time()
-        write_line("Seconds: " + str(round(t1 - t0, 2)))
+
+        if target_face != None and tool_face != None:
+            touching_faces.append((target_face, tool_face))
+            note_created = True
+
+        if note_created:
+            continue
+
+        for tool_face in tool_body.GetFaces():
+            if note_created:
+                break
+            if not face_is_planar(tool_face) or not face_pointing_up_or_down(tool_face):
+                continue
+            for target_face in valid_target_faces:
+                if note_created:
+                    break
+                if touching(target_face, tool_face):
+                    touching_faces.append((target_face, tool_face))
+                    note_created = True
+
+    for pair in touching_faces:
+        target_face = pair[0]
+        tool_face = pair[1]
+        detail = get_detail_name(tool_face.OwningComponent)
+        create_note0(detail, target_face, tool_face)
+        tool_face.OwningComponent.Blank()
+        write_line("Created note: " + detail)
 
 
 if __name__ == '__main__':
